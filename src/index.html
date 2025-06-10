@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NoteWiz - Developer Notes</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="../node_modules/highlight.js/styles/atom-one-dark.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>📝 NoteWiz</h2>
+                <button class="btn-new-note" id="newNoteBtn" title="New Note (Ctrl+N)">
+                    <span>+</span>
+                </button>
+            </div>
+            
+            <div class="notes-list" id="notesList">
+                <div class="note-item active" data-note-id="welcome">
+                    <div class="note-title">Welcome to NoteWiz</div>
+                    <div class="note-preview">Getting started with your developer notes...</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Toolbar -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <button class="toolbar-btn" id="saveBtn" title="Save (Ctrl+S)">
+                        💾 Save
+                    </button>
+                    <button class="toolbar-btn" id="openBtn" title="Open (Ctrl+O)">
+                        📂 Open
+                    </button>
+                </div>
+                
+                <div class="toolbar-center">
+                    <input type="text" class="note-title-input" id="noteTitleInput" placeholder="Untitled Note">
+                </div>
+
+                <div class="toolbar-right">
+                    <button class="toolbar-btn mode-toggle" id="modeToggle" title="Toggle Edit/Preview">
+                        👁️ Preview
+                    </button>
+                    <button class="toolbar-btn" id="insertCodeBtn" title="Insert Code Block">
+                        💻 Code
+                    </button>
+                    <select class="language-select" id="languageSelect">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                        <option value="html">HTML</option>
+                        <option value="css">CSS</option>
+                        <option value="json">JSON</option>
+                        <option value="markdown">Markdown</option>
+                        <option value="sql">SQL</option>
+                        <option value="bash">Bash</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Editor Area -->
+            <div class="editor-container">
+                <!-- Split view: Editor and Preview -->
+                <div class="editor-pane" id="editorPane">
+                    <textarea class="editor" id="editor" placeholder="Start writing your notes here...
+
+# Welcome to NoteWiz! 🚀
+
+This is a note-taking app designed specifically for software engineers. Here are some features:
+
+## Features
+- **Code Syntax Highlighting**: Write code blocks with full syntax highlighting
+- **Markdown Support**: Full markdown rendering for documentation
+- **Split View**: Edit and preview side by side
+- **File Management**: Save and organize your notes
+
+## Code Example
+Here's a sample JavaScript function:
+
+```javascript
+function fibonacci(n) {
+    if (n <= 1) return n;
+    return fibonacci(n - 1) + fibonacci(n - 2);
+}
+
+console.log(fibonacci(10)); // Output: 55
+```
+
+## Python Example
+```python
+def quicksort(arr):
+    if len(arr) <= 1:
+        return arr
+    pivot = arr[len(arr) // 2]
+    left = [x for x in arr if x < pivot]
+    middle = [x for x in arr if x == pivot]
+    right = [x for x in arr if x > pivot]
+    return quicksort(left) + middle + quicksort(right)
+
+# Example usage
+numbers = [3, 6, 8, 10, 1, 2, 1]
+print(quicksort(numbers))
+```
+
+Happy coding! 💻✨"></textarea>
+                </div>
+                
+                <div class="preview-pane" id="previewPane">
+                    <div class="preview-content" id="previewContent">
+                        <!-- Rendered markdown content will appear here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Code Block Insert Modal -->
+    <div class="modal" id="codeModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Insert Code Block</h3>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <label for="codeLanguage">Language:</label>
+                <select id="codeLanguage">
+                    <option value="javascript">JavaScript</option>
+                    <option value="python">Python</option>
+                    <option value="java">Java</option>
+                    <option value="cpp">C++</option>
+                    <option value="html">HTML</option>
+                    <option value="css">CSS</option>
+                    <option value="json">JSON</option>
+                    <option value="sql">SQL</option>
+                    <option value="bash">Bash</option>
+                </select>
+                
+                <textarea id="codeContent" placeholder="Enter your code here..."></textarea>
+                
+                <div class="modal-actions">
+                    <button class="btn-cancel" id="cancelCode">Cancel</button>
+                    <button class="btn-insert" id="insertCode">Insert Code</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../node_modules/marked/marked.min.js"></script>
+    <script src="../node_modules/highlight.js/lib/index.js"></script>
+    <script src="renderer.js"></script>
+</body>
+</html> 
