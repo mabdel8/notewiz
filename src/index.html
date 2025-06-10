@@ -152,8 +152,68 @@ Happy coding! 💻✨"></textarea>
         </div>
     </div>
 
-    <script src="../node_modules/marked/marked.min.js"></script>
-    <script src="../node_modules/highlight.js/lib/index.js"></script>
+    <!-- Slash Command Menu -->
+    <div class="slash-menu" id="slashMenu">
+        <div class="slash-menu-item" data-command="code">
+            <div class="slash-icon">💻</div>
+            <div class="slash-content">
+                <div class="slash-title">Code Block</div>
+                <div class="slash-description">Insert a code block with syntax highlighting</div>
+            </div>
+        </div>
+        <div class="slash-menu-item" data-command="heading">
+            <div class="slash-icon">📝</div>
+            <div class="slash-content">
+                <div class="slash-title">Heading</div>
+                <div class="slash-description">Insert a heading</div>
+            </div>
+        </div>
+        <div class="slash-menu-item" data-command="list">
+            <div class="slash-icon">📋</div>
+            <div class="slash-content">
+                <div class="slash-title">Bullet List</div>
+                <div class="slash-description">Insert a bullet list</div>
+            </div>
+        </div>
+        <div class="slash-menu-item" data-command="table">
+            <div class="slash-icon">📊</div>
+            <div class="slash-content">
+                <div class="slash-title">Table</div>
+                <div class="slash-description">Insert a table</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inline Code Editor -->
+    <div class="inline-code-editor" id="inlineCodeEditor">
+        <div class="inline-code-header">
+            <select id="inlineCodeLanguage">
+                <option value="javascript">JavaScript</option>
+                <option value="python">Python</option>
+                <option value="java">Java</option>
+                <option value="cpp">C++</option>
+                <option value="html">HTML</option>
+                <option value="css">CSS</option>
+                <option value="json">JSON</option>
+                <option value="sql">SQL</option>
+                <option value="bash">Bash</option>
+                <option value="typescript">TypeScript</option>
+                <option value="go">Go</option>
+                <option value="rust">Rust</option>
+                <option value="php">PHP</option>
+            </select>
+            <div class="inline-code-actions">
+                <button id="saveInlineCode" class="btn-save-inline">Save</button>
+                <button id="cancelInlineCode" class="btn-cancel-inline">Cancel</button>
+            </div>
+        </div>
+        <div class="inline-code-content">
+            <textarea id="inlineCodeTextarea" placeholder="Write your code here..." spellcheck="false"></textarea>
+        </div>
+    </div>
+
+    <script src="../node_modules/marked/lib/marked.umd.js"></script>
+    <script src="../node_modules/highlight.js/lib/common.js"></script>
     <script src="renderer.js"></script>
 </body>
 </html> 

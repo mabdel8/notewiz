@@ -622,4 +622,170 @@ body {
 
 .preview-content::-webkit-scrollbar-thumb:hover {
     background: #4f4f4f;
+}
+
+/* Slash Command Menu */
+.slash-menu {
+    display: none;
+    position: absolute;
+    background: #2d2d30;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    z-index: 1000;
+    min-width: 300px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.slash-menu.show {
+    display: block;
+}
+
+.slash-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 15px;
+    cursor: pointer;
+    transition: background 0.2s;
+    border-bottom: 1px solid #404040;
+}
+
+.slash-menu-item:last-child {
+    border-bottom: none;
+}
+
+.slash-menu-item:hover,
+.slash-menu-item.selected {
+    background: #094771;
+}
+
+.slash-icon {
+    font-size: 18px;
+    margin-right: 12px;
+    width: 24px;
+    text-align: center;
+}
+
+.slash-content {
+    flex: 1;
+}
+
+.slash-title {
+    font-weight: 600;
+    color: #cccccc;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.slash-description {
+    font-size: 12px;
+    color: #969696;
+    line-height: 1.3;
+}
+
+/* Inline Code Editor */
+.inline-code-editor {
+    display: none;
+    position: absolute;
+    background: #1e1e1e;
+    border: 1px solid #404040;
+    border-radius: 8px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+    z-index: 1001;
+    min-width: 500px;
+    min-height: 300px;
+    max-width: 80vw;
+    max-height: 70vh;
+}
+
+.inline-code-editor.show {
+    display: flex;
+    flex-direction: column;
+}
+
+.inline-code-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    background: #2d2d30;
+    border-bottom: 1px solid #404040;
+    border-radius: 8px 8px 0 0;
+}
+
+.inline-code-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.btn-save-inline,
+.btn-cancel-inline {
+    padding: 6px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-save-inline {
+    background: #0e639c;
+    border: 1px solid #1177bb;
+    color: white;
+}
+
+.btn-save-inline:hover {
+    background: #1177bb;
+}
+
+.btn-cancel-inline {
+    background: #404040;
+    border: 1px solid #5a5a5a;
+    color: #cccccc;
+}
+
+.btn-cancel-inline:hover {
+    background: #4a4a4a;
+}
+
+.inline-code-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#inlineCodeTextarea {
+    flex: 1;
+    background: #1e1e1e;
+    border: none;
+    color: #d4d4d4;
+    font-family: 'Fira Code', 'JetBrains Mono', 'Monaco', 'Cascadia Code', monospace;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 15px;
+    resize: none;
+    outline: none;
+    min-height: 250px;
+}
+
+#inlineCodeTextarea:focus {
+    outline: none;
+}
+
+#inlineCodeLanguage {
+    background: #404040;
+    border: 1px solid #5a5a5a;
+    color: #cccccc;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+}
+
+/* Editor enhancements for slash commands */
+.editor {
+    position: relative;
+}
+
+.editor.slash-active {
+    /* Visual indicator when slash menu is active */
 } 

@@ -38,15 +38,34 @@ class NoteWiz {
         this.insertCode = document.getElementById('insertCode');
         this.cancelCode = document.getElementById('cancelCode');
         
+        // Slash command elements
+        this.slashMenu = document.getElementById('slashMenu');
+        this.inlineCodeEditor = document.getElementById('inlineCodeEditor');
+        this.inlineCodeLanguage = document.getElementById('inlineCodeLanguage');
+        this.inlineCodeTextarea = document.getElementById('inlineCodeTextarea');
+        this.saveInlineCode = document.getElementById('saveInlineCode');
+        this.cancelInlineCode = document.getElementById('cancelInlineCode');
+        
         // Container elements
         this.editorContainer = document.querySelector('.editor-container');
         this.notesList = document.getElementById('notesList');
+        
+        // Slash command state
+        this.slashMenuVisible = false;
+        this.selectedSlashItem = 0;
+        this.slashPosition = { x: 0, y: 0 };
+        this.slashStartPos = -1;
     }
 
     bindEvents() {
         // Editor events
-        this.editor.addEventListener('input', () => {
+        this.editor.addEventListener('input', (e) => {
             this.onEditorChange();
+            this.handleSlashCommand(e);
+        });
+
+        this.editor.addEventListener('keydown', (e) => {
+            this.handleEditorKeydown(e);
         });
 
         this.noteTitleInput.addEventListener('input', () => {
@@ -64,6 +83,13 @@ class NoteWiz {
         this.closeModal.addEventListener('click', () => this.hideCodeModal());
         this.cancelCode.addEventListener('click', () => this.hideCodeModal());
         this.insertCode.addEventListener('click', () => this.insertCodeBlock());
+
+        // Slash command events
+        this.slashMenu.addEventListener('click', (e) => this.handleSlashMenuClick(e));
+        
+        // Inline code editor events
+        this.saveInlineCode.addEventListener('click', () => this.saveInlineCodeBlock());
+        this.cancelInlineCode.addEventListener('click', () => this.hideInlineCodeEditor());
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
@@ -134,19 +160,36 @@ class NoteWiz {
         }
 
         try {
+            // Check if marked is available
+            if (typeof marked === 'undefined') {
+                throw new Error('Marked library not loaded');
+            }
+
             // Configure marked for code highlighting
-            marked.setOptions({
+            const renderer = new marked.Renderer();
+            
+            // Custom code block renderer
+            renderer.code = function(code, language) {
+                const validLanguage = language && hljs.getLanguage(language) ? language : '';
+                const highlighted = validLanguage 
+                    ? hljs.highlight(code, { language: validLanguage }).value
+                    : hljs.highlightAuto(code).value;
+                
+                return `<pre><code class="hljs ${validLanguage ? `language-${validLanguage}` : ''}">${highlighted}</code></pre>`;
+            };
+
+            // Configure marked options
+            marked.use({
+                renderer: renderer,
                 highlight: function(code, lang) {
                     if (lang && hljs.getLanguage(lang)) {
                         try {
                             return hljs.highlight(code, { language: lang }).value;
                         } catch (err) {
                             console.warn('Highlight.js error:', err);
-                            // Fallback to auto-detect
                             return hljs.highlightAuto(code).value;
                         }
                     }
-                    // Auto-detect language if not specified or not supported
                     return hljs.highlightAuto(code).value;
                 },
                 breaks: true,
@@ -158,15 +201,10 @@ class NoteWiz {
             const html = marked.parse(markdownText);
             this.previewContent.innerHTML = html;
             
-            // Re-highlight any code blocks that might have been missed
-            this.previewContent.querySelectorAll('pre code').forEach((block) => {
-                if (!block.classList.contains('hljs')) {
-                    hljs.highlightElement(block);
-                }
-            });
         } catch (error) {
             console.error('Markdown parsing error:', error);
-            this.previewContent.innerHTML = '<p style="color: #ff6b6b;">Error rendering markdown preview</p>';
+            console.error('Error details:', error.message);
+            this.previewContent.innerHTML = `<p style="color: #ff6b6b;">Error rendering markdown preview: ${error.message}</p>`;
         }
     }
 
@@ -472,6 +510,226 @@ class NoteWiz {
         this.recentFiles = this.recentFiles.filter(file => file.path !== filePath);
         this.saveRecentFiles();
         this.loadRecentFilesUI();
+    }
+
+    // Slash Command Methods
+    handleSlashCommand(e) {
+        const text = this.editor.value;
+        const cursorPos = this.editor.selectionStart;
+        
+        // Check if user typed "/"
+        if (e.inputType === 'insertText' && e.data === '/') {
+            // Check if "/" is at beginning of line or after whitespace
+            const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+            const textBeforeCursor = text.substring(lineStart, cursorPos - 1);
+            
+            if (textBeforeCursor.trim() === '') {
+                this.showSlashMenu(cursorPos - 1);
+                return;
+            }
+        }
+        
+        // Hide slash menu if it's visible and conditions aren't met
+        if (this.slashMenuVisible) {
+            const lineStart = text.lastIndexOf('\n', cursorPos - 1) + 1;
+            const lineText = text.substring(lineStart, cursorPos);
+            
+            if (!lineText.startsWith('/') || lineText.includes(' ')) {
+                this.hideSlashMenu();
+            }
+        }
+    }
+
+    handleEditorKeydown(e) {
+        if (this.slashMenuVisible) {
+            switch (e.key) {
+                case 'ArrowDown':
+                    e.preventDefault();
+                    this.navigateSlashMenu(1);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    this.navigateSlashMenu(-1);
+                    break;
+                case 'Enter':
+                    e.preventDefault();
+                    this.executeSlashCommand();
+                    break;
+                case 'Escape':
+                    e.preventDefault();
+                    this.hideSlashMenu();
+                    break;
+            }
+            return;
+        }
+
+        // Other keyboard shortcuts for inline code editor
+        if (this.inlineCodeEditor.classList.contains('show')) {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                this.hideInlineCodeEditor();
+            }
+            // Let Ctrl+S work even in inline editor
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                this.saveInlineCodeBlock();
+            }
+        }
+    }
+
+    showSlashMenu(position) {
+        this.slashStartPos = position;
+        this.slashMenuVisible = true;
+        this.selectedSlashItem = 0;
+        
+        // Position the menu near the cursor
+        const editorRect = this.editor.getBoundingClientRect();
+        const coords = this.getTextareaCoordinates(this.editor, position);
+        
+        this.slashMenu.style.left = `${editorRect.left + coords.x}px`;
+        this.slashMenu.style.top = `${editorRect.top + coords.y + 25}px`;
+        this.slashMenu.classList.add('show');
+        
+        this.updateSlashMenuSelection();
+    }
+
+    hideSlashMenu() {
+        this.slashMenuVisible = false;
+        this.slashMenu.classList.remove('show');
+        this.slashStartPos = -1;
+    }
+
+    navigateSlashMenu(direction) {
+        const items = this.slashMenu.querySelectorAll('.slash-menu-item');
+        this.selectedSlashItem = Math.max(0, Math.min(items.length - 1, this.selectedSlashItem + direction));
+        this.updateSlashMenuSelection();
+    }
+
+    updateSlashMenuSelection() {
+        const items = this.slashMenu.querySelectorAll('.slash-menu-item');
+        items.forEach((item, index) => {
+            item.classList.toggle('selected', index === this.selectedSlashItem);
+        });
+    }
+
+    handleSlashMenuClick(e) {
+        const item = e.target.closest('.slash-menu-item');
+        if (item) {
+            const command = item.getAttribute('data-command');
+            this.executeSlashCommandByName(command);
+        }
+    }
+
+    executeSlashCommand() {
+        const items = this.slashMenu.querySelectorAll('.slash-menu-item');
+        const selectedItem = items[this.selectedSlashItem];
+        if (selectedItem) {
+            const command = selectedItem.getAttribute('data-command');
+            this.executeSlashCommandByName(command);
+        }
+    }
+
+    executeSlashCommandByName(command) {
+        this.hideSlashMenu();
+        
+        // Remove the "/" character
+        const text = this.editor.value;
+        const beforeSlash = text.substring(0, this.slashStartPos);
+        const afterSlash = text.substring(this.slashStartPos + 1);
+        this.editor.value = beforeSlash + afterSlash;
+        this.editor.selectionStart = this.editor.selectionEnd = this.slashStartPos;
+
+        switch (command) {
+            case 'code':
+                this.showInlineCodeEditor();
+                break;
+            case 'heading':
+                this.insertText('# ');
+                break;
+            case 'list':
+                this.insertText('- ');
+                break;
+            case 'table':
+                this.insertTable();
+                break;
+        }
+        
+        this.onEditorChange();
+    }
+
+    showInlineCodeEditor() {
+        // Position the inline code editor
+        const editorRect = this.editor.getBoundingClientRect();
+        const centerX = editorRect.left + editorRect.width / 2;
+        const centerY = editorRect.top + editorRect.height / 2;
+        
+        this.inlineCodeEditor.style.left = `${centerX - 250}px`;
+        this.inlineCodeEditor.style.top = `${centerY - 150}px`;
+        this.inlineCodeEditor.classList.add('show');
+        
+        // Focus the textarea
+        setTimeout(() => {
+            this.inlineCodeTextarea.focus();
+        }, 100);
+    }
+
+    hideInlineCodeEditor() {
+        this.inlineCodeEditor.classList.remove('show');
+        this.inlineCodeTextarea.value = '';
+        this.editor.focus();
+    }
+
+    saveInlineCodeBlock() {
+        const language = this.inlineCodeLanguage.value;
+        const code = this.inlineCodeTextarea.value;
+        
+        if (code.trim()) {
+            const codeBlock = `\n\`\`\`${language}\n${code}\n\`\`\`\n\n`;
+            this.insertText(codeBlock);
+        }
+        
+        this.hideInlineCodeEditor();
+    }
+
+    insertText(text) {
+        const start = this.editor.selectionStart;
+        const end = this.editor.selectionEnd;
+        const currentText = this.editor.value;
+        
+        this.editor.value = currentText.substring(0, start) + text + currentText.substring(end);
+        this.editor.selectionStart = this.editor.selectionEnd = start + text.length;
+        this.editor.focus();
+    }
+
+    insertTable() {
+        const table = `\n| Header 1 | Header 2 | Header 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |\n| Cell 4   | Cell 5   | Cell 6   |\n\n`;
+        this.insertText(table);
+    }
+
+    // Helper method to get textarea cursor coordinates
+    getTextareaCoordinates(textarea, position) {
+        const div = document.createElement('div');
+        const span = document.createElement('span');
+        
+        const computed = window.getComputedStyle(textarea);
+        div.style.cssText = computed.cssText;
+        div.style.position = 'absolute';
+        div.style.visibility = 'hidden';
+        div.style.height = 'auto';
+        div.style.width = textarea.clientWidth + 'px';
+        div.style.whiteSpace = 'pre-wrap';
+        div.style.wordWrap = 'break-word';
+        
+        const textContent = textarea.value.substring(0, position);
+        div.textContent = textContent;
+        span.textContent = '|';
+        div.appendChild(span);
+        
+        document.body.appendChild(div);
+        const { offsetLeft: x, offsetTop: y } = span;
+        document.body.removeChild(div);
+        
+        return { x, y };
     }
 }
 
