@@ -7,10 +7,12 @@ class NoteWiz {
         this.isPreviewMode = false;
         this.notes = [];
         this.unsavedChanges = false;
+        this.recentFiles = this.loadRecentFiles();
         
         this.initializeElements();
         this.bindEvents();
         this.loadWelcomeNote();
+        this.loadRecentFilesUI();
         this.startAutoSave();
     }
 
@@ -140,16 +142,28 @@ class NoteWiz {
                             return hljs.highlight(code, { language: lang }).value;
                         } catch (err) {
                             console.warn('Highlight.js error:', err);
+                            // Fallback to auto-detect
+                            return hljs.highlightAuto(code).value;
                         }
                     }
+                    // Auto-detect language if not specified or not supported
                     return hljs.highlightAuto(code).value;
                 },
                 breaks: true,
-                gfm: true
+                gfm: true,
+                headerIds: false,
+                mangle: false
             });
 
             const html = marked.parse(markdownText);
             this.previewContent.innerHTML = html;
+            
+            // Re-highlight any code blocks that might have been missed
+            this.previewContent.querySelectorAll('pre code').forEach((block) => {
+                if (!block.classList.contains('hljs')) {
+                    hljs.highlightElement(block);
+                }
+            });
         } catch (error) {
             console.error('Markdown parsing error:', error);
             this.previewContent.innerHTML = '<p style="color: #ff6b6b;">Error rendering markdown preview</p>';
@@ -235,6 +249,7 @@ class NoteWiz {
                 this.markSaved();
                 this.showNotification('Note saved successfully!', 'success');
                 this.updateNoteTitle(filePath);
+                this.addToRecentFiles(filePath, content);
             } else {
                 this.showNotification('Failed to save note: ' + saveResult.error, 'error');
             }
@@ -247,7 +262,7 @@ class NoteWiz {
     async openNote() {
         try {
             const result = await ipcRenderer.invoke('show-open-dialog');
-            if (result.canceled) return;
+            if (result.canceled || !result.filePaths || result.filePaths.length === 0) return;
             
             await this.loadFile(result.filePaths[0]);
         } catch (error) {
@@ -266,7 +281,7 @@ class NoteWiz {
                 this.markSaved();
                 this.updatePreview();
                 this.updateNoteTitle(filePath);
-                this.addToNotesList(filePath, result.content);
+                this.addToRecentFiles(filePath, result.content);
                 this.showNotification('Note loaded successfully!', 'success');
             } else {
                 this.showNotification('Failed to load note: ' + result.error, 'error');
@@ -282,39 +297,7 @@ class NoteWiz {
         this.noteTitleInput.value = fileName;
     }
 
-    addToNotesList(filePath, content) {
-        const fileName = filePath.split(/[\\/]/).pop().replace(/\.[^/.]+$/, '');
-        const preview = content.replace(/[#*`\[\]]/g, '').substring(0, 100).trim() || 'Empty note...';
-        
-        // Remove existing note if it exists
-        const existingNote = document.querySelector(`[data-file-path="${filePath}"]`);
-        if (existingNote) {
-            existingNote.remove();
-        }
 
-        // Remove active class from all notes
-        document.querySelectorAll('.note-item').forEach(item => {
-            item.classList.remove('active');
-        });
-
-        const noteItem = document.createElement('div');
-        noteItem.className = 'note-item active';
-        noteItem.setAttribute('data-file-path', filePath);
-        noteItem.innerHTML = `
-            <div class="note-title">${fileName}</div>
-            <div class="note-preview">${preview}</div>
-        `;
-
-        noteItem.addEventListener('click', () => {
-            this.loadFile(filePath);
-            document.querySelectorAll('.note-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            noteItem.classList.add('active');
-        });
-
-        this.notesList.insertBefore(noteItem, this.notesList.firstChild);
-    }
 
     createNewNote() {
         // Remove active class from all notes
@@ -377,6 +360,119 @@ class NoteWiz {
             }
         }, 30000); // Auto-save every 30 seconds
     }
+
+    loadRecentFiles() {
+        try {
+            const stored = localStorage.getItem('notewiz-recent-files');
+            return stored ? JSON.parse(stored) : [];
+        } catch (error) {
+            console.error('Error loading recent files:', error);
+            return [];
+        }
+    }
+
+    saveRecentFiles() {
+        try {
+            localStorage.setItem('notewiz-recent-files', JSON.stringify(this.recentFiles));
+        } catch (error) {
+            console.error('Error saving recent files:', error);
+        }
+    }
+
+    addToRecentFiles(filePath, content = '') {
+        if (!filePath) return;
+
+        // Remove if already exists
+        this.recentFiles = this.recentFiles.filter(file => file.path !== filePath);
+        
+        // Add to beginning
+        const fileName = filePath.split(/[\\/]/).pop().replace(/\.[^/.]+$/, '');
+        const preview = content.replace(/[#*`\[\]]/g, '').substring(0, 100).trim() || 'Empty note...';
+        
+        this.recentFiles.unshift({
+            path: filePath,
+            name: fileName,
+            preview: preview,
+            lastOpened: new Date().toISOString()
+        });
+
+        // Keep only last 10 files
+        this.recentFiles = this.recentFiles.slice(0, 10);
+        
+        this.saveRecentFiles();
+        this.loadRecentFilesUI();
+    }
+
+    loadRecentFilesUI() {
+        // Clear existing notes except welcome
+        const welcomeNote = document.querySelector('.note-item[data-note-id="welcome"]');
+        this.notesList.innerHTML = '';
+        
+        if (welcomeNote) {
+            this.notesList.appendChild(welcomeNote);
+        }
+
+        // Add recent files
+        this.recentFiles.forEach(file => {
+            this.addNoteToUI(file.path, file.name, file.preview, false);
+        });
+    }
+
+    addNoteToUI(filePath, fileName, preview, makeActive = true) {
+        // Remove existing note if it exists
+        const existingNote = document.querySelector(`[data-file-path="${filePath}"]`);
+        if (existingNote) {
+            existingNote.remove();
+        }
+
+        if (makeActive) {
+            // Remove active class from all notes
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('active');
+            });
+        }
+
+        const noteItem = document.createElement('div');
+        noteItem.className = `note-item ${makeActive ? 'active' : ''}`;
+        noteItem.setAttribute('data-file-path', filePath);
+        noteItem.innerHTML = `
+            <div class="note-title">${fileName}</div>
+            <div class="note-preview">${preview}</div>
+            <div class="note-actions">
+                <button class="remove-note-btn" title="Remove from recent">×</button>
+            </div>
+        `;
+
+        noteItem.addEventListener('click', (e) => {
+            if (e.target.classList.contains('remove-note-btn')) {
+                e.stopPropagation();
+                this.removeFromRecentFiles(filePath);
+                return;
+            }
+            
+            this.loadFile(filePath);
+            document.querySelectorAll('.note-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            noteItem.classList.add('active');
+        });
+
+        // Insert after welcome note if it exists, otherwise at the beginning
+        const welcomeNote = document.querySelector('.note-item[data-note-id="welcome"]');
+        if (welcomeNote && makeActive) {
+            this.notesList.insertBefore(noteItem, welcomeNote.nextSibling);
+        } else if (makeActive) {
+            this.notesList.insertBefore(noteItem, this.notesList.firstChild);
+        } else {
+            this.notesList.appendChild(noteItem);
+        }
+    }
+
+    removeFromRecentFiles(filePath) {
+        this.recentFiles = this.recentFiles.filter(file => file.path !== filePath);
+        this.saveRecentFiles();
+        this.loadRecentFilesUI();
+    }
 }
 
 // Initialize the app when DOM is loaded
@@ -387,6 +483,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // Configure highlight.js
 if (typeof hljs !== 'undefined') {
     hljs.configure({
-        languages: ['javascript', 'python', 'java', 'cpp', 'html', 'css', 'json', 'sql', 'bash', 'markdown']
+        classPrefix: 'hljs-',
+        languages: ['javascript', 'python', 'java', 'cpp', 'c', 'html', 'css', 'json', 'sql', 'bash', 'shell', 'markdown', 'xml', 'typescript', 'go', 'rust', 'php']
     });
+    
+    // Register common language aliases
+    hljs.registerAliases(['js'], { languageName: 'javascript' });
+    hljs.registerAliases(['ts'], { languageName: 'typescript' });
+    hljs.registerAliases(['py'], { languageName: 'python' });
+    hljs.registerAliases(['sh'], { languageName: 'bash' });
+    hljs.registerAliases(['c++', 'cxx'], { languageName: 'cpp' });
 } 

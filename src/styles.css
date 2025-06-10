@@ -107,6 +107,36 @@ body {
     overflow: hidden;
 }
 
+.note-actions {
+    opacity: 0;
+    transition: opacity 0.2s;
+    margin-top: 5px;
+}
+
+.note-item:hover .note-actions {
+    opacity: 1;
+}
+
+.remove-note-btn {
+    background: #f44336;
+    border: none;
+    color: white;
+    width: 20px;
+    height: 20px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.remove-note-btn:hover {
+    background: #d32f2f;
+}
+
 /* Main Content Styles */
 .main-content {
     flex: 1;
